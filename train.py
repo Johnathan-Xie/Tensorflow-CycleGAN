@@ -17,6 +17,8 @@ from keras.layers import Concatenate
 from matplotlib import pyplot
 import h5py
 import time
+import argparse
+import yaml
 
 # define the discriminator model
 def define_discriminator(image_shape):
@@ -218,7 +220,7 @@ def update_image_pool(pool, images, max_size=50):
             pool[ix] = image
     return asarray(selected)
 # train cyclegan models
-def train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA, dataset, ckpt_start = 0):
+def train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA, dataset, ckpt_start = 0, n_samples = 5):
     print("began training")
     # define properties of the training run
     n_epochs, n_batch = 20, 3
@@ -263,7 +265,7 @@ def train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_mode
             print('%.2f minutes left to complete %d steps' % ((n_steps-i)*average(step_times)/60, (n_steps-i)))
         if (i+1) % (bat_per_epo * 1) == 0:
             # plot A->B translation
-            summarize_performance(i, g_model_AtoB, trainA, 'AtoB')
+            summarize_performance(i, g_model_AtoB, trainA, 'AtoB', n_samples)
             # plot B->A translation
             summarize_performance(i, g_model_BtoA, trainB, 'BtoA')
         if (i+1) % (bat_per_epo*5) == 0:
@@ -271,13 +273,15 @@ def train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_mode
             save_models(ckpt_start + i, d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA)
 from keras.models import load_model
 def load_models(step, cust):
-    f1 = 'd_model_A_%06d.h5' % (step)
-    f2 = 'd_model_B_%06d.h5' % (step)
-    f3 = 'g_model_AtoB_%06d.h5' % (step)
-    f4 = 'g_model_BtoA_%06d.h5' % (step)
+    f1 = 'd_model_A_%06d.h5' % (step+1)
+    f2 = 'd_model_B_%06d.h5' % (step+1)
+    f3 = 'g_model_AtoB_%06d.h5' % (step+1)
+    f4 = 'g_model_BtoA_%06d.h5' % (step+1)
     return load_model(f1, cust), load_model(f2, cust), load_model(f3, cust), load_model(f4, cust)
 if __name__ == '__main__':
-    STEP_CHECKPOINT = -1
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--ckpt_folder', type=str, help='model ckpts to load, see default_models folder for template')
+    step_ckpt = 0
     # load image data
     dataset = load_real_samples('../input/horses2zebra-data/horse2zebra_256.npz')
     print('Loaded', dataset[0].shape, dataset[1].shape)
@@ -285,9 +289,9 @@ if __name__ == '__main__':
     image_shape = dataset[0].shape[1:]
     cust = {'InstanceNormalization': InstanceNormalization}
 
-    if STEP_CHECKPOINT > -1:
-        d_model_a, d_model_b, g_model_AtoB, g_model_BtoA = load_models(STEP_CHECKPOINT, cust)
-        print("loaded from checkpoint step " + str(STEP_CHECKPOINT))
+    if step_ckpt > 0:
+        d_model_a, d_model_b, g_model_AtoB, g_model_BtoA = load_models(step_ckpt, cust)
+        print("loaded from checkpoint step " + str(step_ckpt))
 
     else:
         g_model_AtoB = define_generator(image_shape)
@@ -298,7 +302,5 @@ if __name__ == '__main__':
 
     c_model_AtoB = define_composite_model(g_model_AtoB, d_model_B, g_model_BtoA, image_shape)
     c_model_BtoA = define_composite_model(g_model_BtoA, d_model_A, g_model_AtoB, image_shape)
-
-    save_models(0, d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA)
     # train models
-    train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA, dataset, STEP_CHECKPOINT)
+    train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA, dataset, step_ckpt)
