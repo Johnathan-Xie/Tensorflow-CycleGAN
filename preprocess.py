@@ -18,19 +18,22 @@ def load_images(path, size=(256,256)):
         data_list.append(pixels)
     return asarray(data_list)
 
-# dataset path
-path = '../input/horses2zebra-data/horse2zebra/'
-# load dataset A
-dataA1 = load_images(path + 'trainA/')
-dataAB = load_images(path + 'testA/')
-dataA = vstack((dataA1, dataAB))
-print('Loaded dataA: ', dataA.shape)
-# load dataset B
-dataB1 = load_images(path + 'trainB/')
-dataB2 = load_images(path + 'testB/')
-dataB = vstack((dataB1, dataB2))
-print('Loaded dataB: ', dataB.shape)
-# save as compressed numpy array
-filename = 'horse2zebra_256.npz'
-savez_compressed(filename, dataA, dataB)
-print('Saved dataset: ', filename)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--folder_path', type=str, help='path to dataset folder')
+    parser.add_argument('--img_size', type=str, help='''img_dims formatted as "dim1 dim2"''')
+    parser.add_argument('--out_file', type=str, help='processed dataset path')
+    opt= = parser.parse_args()
+    
+    path = opt.folder_path
+    dims = (int(i) for i in opt.img_size.split())
+    out_file = opt.out_file
+    
+    dataA1 = load_images(path + 'trainA/', size=dims)
+    print('Loaded dataA: ', dataA.shape)
+    
+    dataB1 = load_images(path + 'trainB/', size=dims)
+    print('Loaded dataB: ', dataB.shape)
+
+    savez_compressed(out_file, dataA, dataB)
+    print('Saved dataset: ', out_file)
